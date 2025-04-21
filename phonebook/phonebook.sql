@@ -26,43 +26,13 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE PROCEDURE insert_many_users(
-    IN names TEXT[],
-    IN phones TEXT[],
-    OUT incorrect_entries TEXT[]
-)
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    i INT := 1;
-    temp_errors TEXT[] := ARRAY[]::TEXT[];
-BEGIN
-    WHILE i <= array_length(names, 1) LOOP
-        IF phones[i] ~ '^\d{6,15}$' THEN
-            BEGIN
-                IF EXISTS (SELECT 1 FROM PhoneBook WHERE first_name = names[i]) THEN
-                    UPDATE PhoneBook SET phone = phones[i] WHERE first_name = names[i];
-                ELSE
-                    INSERT INTO PhoneBook (first_name, phone) VALUES (names[i], phones[i]);
-                END IF;
-            EXCEPTION WHEN OTHERS THEN
-                temp_errors := array_append(temp_errors, names[i] || ' (' || phones[i] || ')');
-            END;
-        ELSE
-            temp_errors := array_append(temp_errors, names[i] || ' (' || phones[i] || ')');
-        END IF;
-        i := i + 1;
-    END LOOP;
-    incorrect_entries := temp_errors;
-END;
-$$;
-
 CREATE OR REPLACE FUNCTION get_contacts_paginated(p_limit INT, p_offset INT)
 RETURNS TABLE(id INT, first_name TEXT, phone TEXT) AS $$
 BEGIN
     RETURN QUERY
-    SELECT * FROM PhoneBook
-    ORDER BY id
+    SELECT PhoneBook.id, PhoneBook.first_name::TEXT, PhoneBook.phone::TEXT
+    FROM PhoneBook
+    ORDER BY PhoneBook.id
     LIMIT p_limit OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql;
@@ -71,8 +41,12 @@ CREATE OR REPLACE PROCEDURE delete_user(p_name TEXT, p_phone TEXT)
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    DELETE FROM PhoneBook
-    WHERE (p_name IS NOT NULL AND first_name = p_name)
-       OR (p_phone IS NOT NULL AND phone = p_phone);
+    IF p_name IS NOT NULL THEN
+        DELETE FROM PhoneBook WHERE first_name = p_name;
+    END IF;
+    
+    IF p_phone IS NOT NULL THEN
+        DELETE FROM PhoneBook WHERE phone = p_phone;
+    END IF;
 END;
 $$;
