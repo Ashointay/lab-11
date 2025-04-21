@@ -41,12 +41,8 @@ CREATE OR REPLACE PROCEDURE delete_user(p_name TEXT, p_phone TEXT)
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF p_name IS NOT NULL THEN
-        DELETE FROM PhoneBook WHERE first_name = p_name;
-    END IF;
-    
-    IF p_phone IS NOT NULL THEN
-        DELETE FROM PhoneBook WHERE phone = p_phone;
-    END IF;
+    DELETE FROM PhoneBook
+    WHERE (p_name IS NOT NULL AND first_name = p_name)
+       OR (p_phone IS NOT NULL AND phone = p_phone);
 END;
 $$;
